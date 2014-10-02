@@ -2,10 +2,19 @@
   Arduino-UniversalClipboard
   An Arduino sketch for an Arduino Leonardo combined with an Arduino USB Host Shield
   that turns it into a universal software independent clipboard.
+
+  Hardware setup:
+    - An Arduino Leonardo with
+      - A USB Host shield attached.
+      - A switch between GND and pin 12: Used to activate the USB proxying.
+      - A green (OK) LED with its anode (the small part inside it) connected to pin 13
+      - A yellow (working) LED with its anode (the small part inside it) connected to pin 11
+      - A red (error) LED with its anode (the small part inside it) connected to pin 7
+      - All of the LEDs cathodes are connected to GND
  */
- 
+
 #include <hidboot.h>
- 
+
 const int activationPin =  12; // the number of the pin to activate the USB keyboard interaction.
 int activationState = LOW;       // variable for reading the pushbutton status
 bool activated = false;
@@ -53,24 +62,24 @@ HIDBoot<HID_PROTOCOL_KEYBOARD> HidKeyboard(&UsbHost);
 
 class ProxyKeyboardParser : public KeyboardReportParser
 {
-  void UnknownKey(uint8_t key);
-protected:
-  virtual void OnControlKeysChanged(uint8_t before, uint8_t after);
-  virtual void OnKeyDown	(uint8_t mod, uint8_t key);
-  virtual void OnKeyUp	(uint8_t mod, uint8_t key);
+    void UnknownKey(uint8_t key);
+  protected:
+    virtual void OnControlKeysChanged(uint8_t before, uint8_t after);
+    virtual void OnKeyDown	(uint8_t mod, uint8_t key);
+    virtual void OnKeyUp	(uint8_t mod, uint8_t key);
 };
 
 char message[64];
 
 void ProxyKeyboardParser::UnknownKey(uint8_t key) {
-   snprintf(message, 64, "?%d?", key);
+  snprintf(message, 64, "?%d?", key);
   Keyboard.print(message);
 }
 
 void ProxyKeyboardParser::OnControlKeysChanged(uint8_t before, uint8_t after) {
   /*
   working_blink();
-  
+
   MODIFIERKEYS beforeMod;
   *((uint8_t*)&beforeMod) = before;
 
@@ -111,13 +120,13 @@ void setup() {
   pinMode(errorLedPin, OUTPUT);
   pinMode(workingLedPin, OUTPUT);
   pinMode(okLedPin, OUTPUT);
-  
+
   pinMode(activationPin, INPUT_PULLUP);
 }
 
 void printDebugSequence() {
   int key = 0;
-  for(int key = 0; key < 127; key++) {
+  for (int key = 0; key < 127; key++) {
     snprintf(message, 64, "%d is '", key);
     Keyboard.print(message);
     Keyboard.press(key);
@@ -141,16 +150,16 @@ void setup_proxy() {
 
 // the loop function runs over and over again forever
 void loop() {
-  if(activated == false) {
+  if (activated == false) {
     activationState = digitalRead(activationPin);
-    if(activationState == LOW) {
+    if (activationState == LOW) {
       activated = true;
       // First activation
       setup_proxy();
     }
   }
-  
-  if(activated) {
+
+  if (activated) {
     UsbHost.Task();
   }
 }
