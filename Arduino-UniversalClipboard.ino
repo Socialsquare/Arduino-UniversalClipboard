@@ -11,7 +11,24 @@
       - A yellow (working) LED with its anode (the small part inside it) connected to pin 11
       - A red (error) LED with its anode (the small part inside it) connected to pin 7
       - All of the LEDs cathodes are connected to GND
- */
+*/
+
+/*
+#define DEBUG_USB_HOST
+
+void NotifyFailGetDevDescr() {
+  Serial.println("Failed getting the device descriptor.");
+}
+
+void NotifyFailSetConfDescr() {
+  Serial.println("Failed setting the device descriptor.");
+}
+
+void NotifyFail(unsigned char c) {
+  Serial.print("Fail: ");
+  Serial.println(c);
+}
+*/
 
 #include <hidboot.h>
 
@@ -23,8 +40,7 @@ const int errorLedPin = 7;
 const int workingLedPin = 11;
 const int okLedPin = 13;
 
-//const uint8_t key_mapping[128];
-
+// const uint8_t key_mapping[128];
 
 void error() {
   digitalWrite(errorLedPin, HIGH);
@@ -56,6 +72,11 @@ void reset_ok() {
   digitalWrite(okLedPin, LOW);
 }
 
+uint8_t translateKey(uint8_t key) {
+  
+  return 0;
+}
+
 USB UsbHost;
 //USBHub     Hub(&UsbHost);
 HIDBoot<HID_PROTOCOL_KEYBOARD> HidKeyboard(&UsbHost);
@@ -72,7 +93,7 @@ class ProxyKeyboardParser : public KeyboardReportParser
 char message[64];
 
 void ProxyKeyboardParser::UnknownKey(uint8_t key) {
-  snprintf(message, 64, "?%d?", key);
+  snprintf(message, 64, "_%d", key);
   Keyboard.print(message);
 }
 
@@ -91,15 +112,13 @@ void ProxyKeyboardParser::OnControlKeysChanged(uint8_t before, uint8_t after) {
 void ProxyKeyboardParser::OnKeyDown(uint8_t mod, uint8_t key)
 {
   working_blink();
-  Keyboard.press(key);
-  /*
-  uint8_t c = OemToAscii(mod, key);
-  if(c > 0) {
-    Keyboard.press(c);
+  uint8_t translated_key = translateKey(key);
+  //uint8_t c = OemToAscii(mod, key);
+  if(translated_key > 0) {
+    Keyboard.press(translated_key);
   } else {
     UnknownKey(key);
   }
-  */
 }
 
 
@@ -107,6 +126,10 @@ void ProxyKeyboardParser::OnKeyUp(uint8_t mod, uint8_t key)
 {
   working_blink();
   Keyboard.release(key);
+  uint8_t translated_key = translateKey(key);
+  if(translated_key > 0) {
+    Keyboard.press(translated_key);
+  }
   /*
   uint8_t c = OemToAscii(mod, key);
   Keyboard.release(c);
@@ -126,12 +149,14 @@ void setup() {
 
 void printDebugSequence() {
   int key = 0;
-  for (int key = 0; key < 127; key++) {
-    snprintf(message, 64, "%d is '", key);
+  for (int key = 0; key <= 127; key++) {
+    snprintf(message, 64, "%d is \\", key);
     Keyboard.print(message);
-    Keyboard.press(key);
+    if(key != 96) {
+      Keyboard.press(key);
+    }
     Keyboard.releaseAll();
-    Keyboard.println("'");
+    Keyboard.println("\\");
   }
 }
 
@@ -141,10 +166,30 @@ void setup_proxy() {
   } else {
     ok();
     HidKeyboard.SetReportParser(0, (HIDReportParser*)&parser);
+    
+    USB_HID_DESCRIPTOR descriptor;
+    
+    // Serial.println("Starting ...");
+    
+    USB *pUsb = (USB *) HidKeyboard.GetUsb();
+    /*
+    AddressPool &addrPool = pUsb->GetAddressPool();
+    UsbDevice *p = addrPool.GetUsbDevicePtr(0);
+    EpInfo *epinfo = p->epinfo;
+    */
+    /*
+    USB_DEVICE_DESCRIPTOR *device_descriptor;
+    pUsb->getDevDescr(0, 0, sizeof(device_descriptor), (uint8_t*) device_descriptor);
+    Serial.println(device_descriptor->bDeviceClass);
+    Serial.println(device_descriptor->bDeviceSubClass);
+    */
+    
+    Serial.println("Done ...");
+    
     // Start acting as a keyboard to the computer
     Keyboard.begin();
     delay(500);
-    printDebugSequence();
+    // printDebugSequence();
   }
 }
 
