@@ -38,6 +38,11 @@ void error() {
 void reset_error() {
   digitalWrite(ERROR_LED_PIN, LOW);
 }
+void error_blink() {
+  error();
+  delay(10);
+  reset_error();
+}
 
 // Working
 void working() {
@@ -142,8 +147,6 @@ HIDBoot<HID_PROTOCOL_KEYBOARD> HidKeyboard(&UsbHost);
 
 class ProxyKeyboardParser : public KeyboardReportParser
 {
-    void UnknownKey(uint8_t key);
-    void SendModifierPressRelease(uint8_t before, uint8_t after, uint8_t key);
   protected:
     virtual void OnControlKeysChanged (uint8_t before, uint8_t after);
     virtual void OnKeyDown	      (uint8_t mod, uint8_t key);
@@ -247,9 +250,14 @@ bool intercept_recording_command(uint8_t mod, uint8_t key) {
 
 void intercept_recording_key(uint8_t mod, uint8_t key) {
   if(active_recording_channel > 0) {
-    // We are recording
-    channels[active_recording_channel-1][active_channel_index++] = mod;
-    channels[active_recording_channel-1][active_channel_index++] = key;
+    if(active_channel_index < CHANNEL_LENGTH) {
+      // We are recording
+      channels[active_recording_channel-1][active_channel_index++] = mod;
+      channels[active_recording_channel-1][active_channel_index++] = key;
+    } else {
+      error_blink();
+      stop_recording();
+    }
   }
 }
 
